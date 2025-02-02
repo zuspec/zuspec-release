@@ -6,6 +6,18 @@ on:
         version_dir:
             required: true
             type: string
+        build_linux:
+            type: boolean
+            default: true
+        build_macos:
+            type: boolean
+            default: false
+        build_windows:
+            type: boolean
+            default: false
+        build_docs:
+            type: boolean
+            default: false
     secrets:
       PYPI_API_TOKEN:
         required: true
