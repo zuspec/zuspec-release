@@ -29,12 +29,16 @@ jobs:
           shell: bash
           run: |
             tag=$(git tag -l --contains HEAD)
+            echo "tag: ${tag}"
 
             if test -z ${tag}; then
                 # Candidate release
+                echo "Configuring a candidate release"
                 sed -i \
                   -e 's/VERSION = "\([0-9]\.[0-9]\.[0-9]\)"/VERSION = "\1.${{ github.run_id }}rc0"/g' \
                   ${{ inputs.version_dir }}/__version__.py 
+            else
+                echo "Configuring a full release"
             fi
         
         - name: Build packages
