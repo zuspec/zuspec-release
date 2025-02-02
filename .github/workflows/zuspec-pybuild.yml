@@ -2,6 +2,10 @@
 name: zuspec_pybuild
 on:
   workflow_call:
+    inputs:
+        version_dir:
+            required: true
+            type: string
     secrets:
       PYPI_API_TOKEN:
         required: true
@@ -21,6 +25,15 @@ jobs:
         steps:
         - name: checkout
           uses: actions/checkout@v4
+        - name: Update Version
+          run: |
+            tag=$(git tag -l --contains HEAD)
+            if test -z "${tag}"; then
+                # Candidate release
+                sed -i \
+                  -e "s/VERSION = \"\([0-9]\.[0-9]\.[0-9]\)\"/VERSION = \"\1.${{ github.run_id }}rc0/g" \
+                  ${{ inputs.version_dir }}/__version__.py 
+        
         - name: Build packages
           env:
             IVPM_PYTHON: /opt/python/${{ matrix.spec }}/bin/python
