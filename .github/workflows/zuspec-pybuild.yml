@@ -33,7 +33,7 @@ jobs:
               - spec: 'cp310-cp310'
               - spec: 'cp311-cp311'
               - spec: 'cp312-cp312'
-              - spec: 'cp313-cp313'
+#              - spec: 'cp313-cp313'
         steps:
         - name: checkout
           uses: actions/checkout@v4
