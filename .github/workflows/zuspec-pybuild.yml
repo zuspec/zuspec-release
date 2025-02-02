@@ -28,13 +28,14 @@ jobs:
         - name: Update Version
           shell: bash
           run: |
-            tag=`git tag -l --contains HEAD`
+            tag=$(git tag -l --contains HEAD)
 
             if test -z ${tag}; then
                 # Candidate release
                 sed -i \
                   -e 's/VERSION = "\([0-9]\.[0-9]\.[0-9]\)"/VERSION = "\1.${{ github.run_id }}rc0"/g' \
                   ${{ inputs.version_dir }}/__version__.py 
+            fi
         
         - name: Build packages
           env:
