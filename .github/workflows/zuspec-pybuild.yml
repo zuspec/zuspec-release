@@ -2,10 +2,6 @@
 name: zuspec_pybuild
 on:
   workflow_call:
-    inputs:
-      config-path:
-        required: true
-        type: string
     secrets:
       PYPI_API_TOKEN:
         required: true
