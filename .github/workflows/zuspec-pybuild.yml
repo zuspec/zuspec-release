@@ -26,6 +26,7 @@ jobs:
         - name: checkout
           uses: actions/checkout@v4
         - name: Update Version
+          shell: bash
           run: |
             tag=$(git tag -l --contains HEAD)
             if test -z "${tag}"; then
