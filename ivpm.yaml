@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=https://fvtils.github.io/ivpm/ivpm.json
+
+package:
+  name: zuspec-release
+
+  dep-sets:
+  - name: default-dev
+    deps:
+    - name: zuspec-sv
+      url: https://github.com/zuspec/zuspec-sv.git
+      dep-set: default-dev
