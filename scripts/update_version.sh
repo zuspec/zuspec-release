@@ -16,9 +16,14 @@ for pkg in $packages; do
         echo "Error: more than one __version__.py file found"
         exit 1
     fi
-    sed -i -e "s/VERSION=\"[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\"/VERSION=\"${version}\"/g" $files
-    git add $files || exit 1
-    git commit -s -m "Update version to ${version}" || exit 1
-    git push || exit 1
+    ex_version=$(sed -e 's/VERSION="\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\)"/\1/g' $files)
+    if test ${ex_version} = ${version}; then
+        echo "Warning: project already has verison ${version}"
+    else
+        sed -i -e "s/VERSION=\"[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\"/VERSION=\"${version}\"/g" $files
+        git add $files || exit 1
+        git commit -s -m "Update version to ${version}" || exit 1
+        git push || exit 1
+    fi
 done
 
