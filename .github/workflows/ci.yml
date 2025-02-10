@@ -1,0 +1,19 @@
+name: CI
+on:
+  push:
+#  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * 0/2'
+
+jobs:
+    linux:
+        runs-on: ubuntu-latest
+        steps:
+        - name: checkout
+          uses: actions/checkout@v4
+        - name: bootstrap
+          run: |
+            python3 -m venv ./packages/python
+            ./packages/python/bin/pip install -pre ivpm
+            ./packages/python/bin/ivpm update --skip-py-install
