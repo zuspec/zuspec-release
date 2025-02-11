@@ -1,6 +1,6 @@
 #!/bin/bash -x
 
-version="0.0.6"
+version="0.0.7"
 
 scripts_dir=$(dirname $(realpath $0))
 proj_dir=$(dirname ${scripts_dir})
