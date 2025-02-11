@@ -1,9 +1,13 @@
 #!/bin/bash -x
 
-version="0.0.7"
+version="0.0.8"
 
 scripts_dir=$(dirname $(realpath $0))
 proj_dir=$(dirname ${scripts_dir})
+
+echo "Ensuring source is up-to-date"
+${proj_dir}/packages/python/bin/ivpm sync
+if test $? -ne 0; then exit 1; fi
 
 packages="zuspec-parser zuspec-arl-dm zuspec-fe-parser zuspec-arl-eval" 
 packages="$packages zuspec-be-sw zuspec-sv"
