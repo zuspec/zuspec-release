@@ -27,7 +27,7 @@ on:
 
 jobs:
     universal:
-        iff: ${{ inputs.build_universal }}
+        if: ${{ inputs.build_universal }}
         runs-on: ubuntu-latest
         steps:
         - name: checkout
@@ -47,7 +47,7 @@ jobs:
                 echo "Configuring a full release"
             fi
     linux:
-        iff: ${{ inputs.build_linux && !inputs.build_universal }}
+        if: ${{ inputs.build_linux && !inputs.build_universal }}
         runs-on: ubuntu-latest
         strategy:
           matrix:
