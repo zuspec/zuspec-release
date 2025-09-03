@@ -47,6 +47,10 @@ jobs:
                 echo "Configuring a candidate release"
                 sed -i -e 's/SUFFIX=".*"/SUFFIX=".${{ github.run_id }}rc0"/g' \
                   ${{ inputs.version_dir }}/__version__.py 
+                if test -f pyproject.toml; then
+                  sed -i -e 's/version.*=.*"\(.*\)"/version="\1.${{ github.run_id }}rc0"/g' pyproject.toml
+                  cat pyproject.toml
+                fi
             else
                 echo "Configuring a full release"
             fi
