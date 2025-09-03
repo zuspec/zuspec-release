@@ -81,6 +81,7 @@ jobs:
             python3 -m venv py
             ./py/bin/pip install -U ivpm packaging
             ./py/bin/ivpm update -a
+            ./packages/python/bin/pip install -U packaging
             make -C docs html
         - name: Publish
           if: ${{ startsWith(github.ref, 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v') }}
