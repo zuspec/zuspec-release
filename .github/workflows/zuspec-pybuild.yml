@@ -46,6 +46,21 @@ jobs:
             else
                 echo "Configuring a full release"
             fi
+        - name: Build packages
+          run: |
+            python3 -m venv py
+            ./py/bin/python3 -m pip install -U ivpm build
+            ./py/bin/ivpm update -a --py-prerls-packages
+            ./py/bin/python3 -m build
+        - name: Publish to PyPi
+          if: ${{ startsWith(github.ref, 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v') }}
+          env:
+            BUILD_NUM: ${{ github.run_id }}
+            TWINE_USERNAME: __token__
+            TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+          run: |
+            python3 -m pip install -U twine packaging
+            python3 -m twine upload dist/*.whl
     linux:
         if: ${{ inputs.build_linux && !inputs.build_universal }}
         runs-on: ubuntu-latest
