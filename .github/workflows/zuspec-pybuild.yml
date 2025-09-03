@@ -83,6 +83,7 @@ jobs:
             ./py/bin/ivpm update -a
             ./packages/python/bin/pip install -U packaging
             make -C docs html
+            touch docs/_build/html/.nojekyll
         - name: Publish
           if: ${{ startsWith(github.ref, 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v') }}
           uses: JamesIves/github-pages-deploy-action@4.1.7
