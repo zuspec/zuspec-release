@@ -32,6 +32,10 @@ jobs:
         steps:
         - name: checkout
           uses: actions/checkout@v4
+        - name: Configure Python version
+          uses: actions/setup-python@v5
+          with:
+            python-version: '3.13' 
         - name: Update Version
           shell: bash
           run: |
@@ -68,6 +72,10 @@ jobs:
         steps:
         - name: checkout
           uses: actions/checkout@v4
+        - name: Configure Python version
+          uses: actions/setup-python@v5
+          with:
+            python-version: '3.13' 
         - name: Setup Python
           run: |
             python3 -m venv py
