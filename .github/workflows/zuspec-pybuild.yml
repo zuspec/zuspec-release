@@ -6,6 +6,9 @@ on:
         version_dir:
             required: true
             type: string
+        build_universal:
+            type: boolean
+            default: false
         build_linux:
             type: boolean
             default: true
@@ -23,7 +26,28 @@ on:
         required: true
 
 jobs:
+    universal:
+        iff: ${{ inputs.build_universal }}
+        runs-on: ubuntu-latest
+        steps:
+        - name: checkout
+          uses: actions/checkout@v4
+        - name: Update Version
+          shell: bash
+          run: |
+            tag=$(git tag -l --contains HEAD)
+            echo "tag: ${tag}"
+
+            if test -z ${tag}; then
+                # Candidate release
+                echo "Configuring a candidate release"
+                sed -i -e 's/SUFFIX=".*"/SUFFIX=".${{ github.run_id }}rc0"/g' \
+                  ${{ inputs.version_dir }}/__version__.py 
+            else
+                echo "Configuring a full release"
+            fi
     linux:
+        iff: ${{ inputs.build_linux && !inputs.build_universal }}
         runs-on: ubuntu-latest
         strategy:
           matrix:
