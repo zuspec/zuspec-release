@@ -79,7 +79,7 @@ jobs:
         - name: Setup Python
           run: |
             python3 -m venv py
-            ./py/bin/pip install -U ivpm
+            ./py/bin/pip install -U ivpm packaging
             ./py/bin/ivpm update -a
             make -C docs html
         - name: Publish
