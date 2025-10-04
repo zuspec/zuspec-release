@@ -52,7 +52,7 @@ jobs:
       - name: Create llms.txt
         env:
           COPILOT_MODEL: "gpt-4.1"
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.LLMS_PAT }}
         run: |
           copilot --allow-tool "write" -p "${{ inputs.build_llms_txt_prompt }}"
       - name: Copy
