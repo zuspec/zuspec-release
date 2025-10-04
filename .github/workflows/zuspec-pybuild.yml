@@ -46,13 +46,15 @@ jobs:
       - name: Install Copilot CLI extension
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh extension install github/gh-copilot --force
+        run: |
+          # gh extension install github/gh-copilot --force
+          npm install -g @github/copilot
       - name: Create llms.txt
         env:
           COPILOT_MODEL: "gpt-4.1"
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh copilot --allow-tool "write" -p "${{ inputs.build_llms_txt_prompt }}"
+          copilot --allow-tool "write" -p "${{ inputs.build_llms_txt_prompt }}"
       - name: Copy
         run: |
          cat llms.txt  
