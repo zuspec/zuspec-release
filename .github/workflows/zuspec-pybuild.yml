@@ -124,7 +124,12 @@ jobs:
             ./py/bin/ivpm update -a
             ./packages/python/bin/pip install -U packaging
             make -C docs html
-            if test -f llms.txt; then cp llms.txt docs/_build/htmo; fi
+            if test -f llms.txt; then 
+              echo "llms.txt present"
+              cp llms.txt docs/_build/html; 
+            else
+              echo "No llms.txt"
+            fi
             touch docs/_build/html/.nojekyll
         - name: Publish
           if: ${{ startsWith(github.ref, 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v') }}
