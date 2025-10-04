@@ -32,6 +32,8 @@ on:
     secrets:
       PYPI_API_TOKEN:
         required: true
+      LLMS_PAT:
+        required: false
 
 jobs:
     llms_txt:
