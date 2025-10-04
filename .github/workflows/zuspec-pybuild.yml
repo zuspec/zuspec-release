@@ -137,6 +137,7 @@ jobs:
           uses: actions/download-artifact@v4
           with:
             name: llms-txt
+            path: llms-txt
         - name: Add llms.txt
           if: ${{ inputs.build_llms_txt }}
           run: cp llms-txt/llms.txt docs/_build/html
@@ -162,6 +163,7 @@ jobs:
           uses: actions/download-artifact@v4
           with:
             name: llms-txt
+            path: llms-txt
         - name: Add llms.txt
           if: ${{ inputs.build_llms_txt }}
           run: |
