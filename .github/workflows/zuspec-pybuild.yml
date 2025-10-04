@@ -60,6 +60,11 @@ jobs:
       - name: Copy
         run: |
          cat llms.txt  
+      - name: Release llms.txt
+        uses: actions/upload-artifact@v4
+        with:
+          name: llms-txt
+          path: llms.txt
 
     universal:
         if: ${{ inputs.build_universal }}
@@ -123,14 +128,18 @@ jobs:
             ./py/bin/pip install -U ivpm packaging
             ./py/bin/ivpm update -a
             ./packages/python/bin/pip install -U packaging
+        - name: Build Docs
+          run: |
             make -C docs html
-            if test -f llms.txt; then 
-              echo "llms.txt present"
-              cp llms.txt docs/_build/html; 
-            else
-              echo "No llms.txt"
-            fi
             touch docs/_build/html/.nojekyll
+        - name: llms_txt
+          iff: ${{ inputs.build_llms_txt }}
+          uses: actions/download-artifact@v4
+          with:
+            name: llms-txt
+        - name: Add llms.txt
+          iff: ${{ inputs.build_llms_txt }}
+          run: cp llms-txt/llms.txt docs/_build/html
         - name: Publish
           if: ${{ startsWith(github.ref, 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v') }}
           uses: JamesIves/github-pages-deploy-action@4.1.7
@@ -148,6 +157,34 @@ jobs:
         steps:
         - name: checkout
           uses: actions/checkout@v4
+        - name: llms_txt
+          iff: ${{ inputs.build_llms_txt }}
+          uses: actions/download-artifact@v4
+          with:
+            name: llms-txt
+        - name: Add llms.txt
+          iff: ${{ inputs.build_llms_txt }}
+          run: |
+            root_pkg=""
+            depth=0
+
+            while find src -mindepth "$depth" -maxdepth "$depth" -print | grep -q '.'; do
+              file=$(find src -mindepth "$depth" -maxdepth "$depth" -name '__init__.py')
+              if test ! -z $file; then
+                root_pkg=$(dirname $file)
+                break
+              fi
+            done
+
+            if test -x $root_pkg; then
+              echo "Failed to find root package"
+              exit 1
+
+            else
+              echo "Root package: ${root_pkg}"
+            fi
+            cp llms-txt/llms.txt ${root_pkg}
+
         - name: Update Version
           shell: bash
           run: |
