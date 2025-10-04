@@ -18,6 +18,14 @@ on:
         build_windows:
             type: boolean
             default: false
+        build_llms_txt:
+            type: boolean
+            default: false
+        build_llms_txt_prompt:
+            type: string
+            default: >
+              Create an 'llms.txt' file using the content of docs, src, and tests.
+              This file provides instructions for LLMs to use this library.
         build_docs:
             type: boolean
             default: false
@@ -26,8 +34,29 @@ on:
         required: true
 
 jobs:
+    llms_txt:
+      if: ${{ inputs.build_llms_txt }}
+      runs-on: ubuntu-latest
+      steps:
+      - name: checkout
+        uses: actions/checkout@v4
+      - name: Authenticate with GitHub CLI
+        run: |
+          echo "${{ secrets.GH_TOKEN }}" | gh auth login --with-token
+      - name: Install Copilot CLI extension
+        run: gh extension install github/gh-copilot --force
+      - name: Create llms.txt
+        env:
+          COPILOT_MODEL: "gpt-4.1"
+        run: |
+          gh copilot --allow-tool "write" -p ${{ inputs.build_llms_txt_prompt }}
+      - name: Copy
+        run: |
+         cat llms.txt  
+
     universal:
         if: ${{ inputs.build_universal }}
+        needs: llms_txt
         runs-on: ubuntu-latest
         steps:
         - name: checkout
