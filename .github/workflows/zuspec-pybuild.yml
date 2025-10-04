@@ -26,8 +26,6 @@ on:
             default: >
               Create an 'llms.txt' file using the content of docs, src, and tests.
               This file provides instructions for LLMs to use this library.
-        llms_pat:
-            type: string
         build_docs:
             type: boolean
             default: false
@@ -54,7 +52,7 @@ jobs:
       - name: Create llms.txt
         env:
           COPILOT_MODEL: "gpt-4.1"
-          GITHUB_TOKEN: "${{ inputs.llms_pat }}"
+          GITHUB_TOKEN: "${{ secrets.LLMS_PAT }}"
         run: |
           copilot --allow-tool "write" -p "${{ inputs.build_llms_txt_prompt }}"
       - name: Copy
