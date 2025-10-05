@@ -106,6 +106,7 @@ jobs:
           run: |
             if test -d tests/unit; then
               echo "Note: running tests"
+              export PYTHONPATH=$(pwd)/src
               ./packages/python/bin/pytest -s tests/unit
             else
               echo "Note: no tests"
