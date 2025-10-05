@@ -106,7 +106,7 @@ jobs:
           run: |
             if test -d tests/unit; then
               echo "Note: running tests"
-              ./py/bin/pytest -s tests/unit
+              ./packages/python/bin/pytest -s tests/unit
             else
               echo "Note: no tests"
             fi
