@@ -95,6 +95,21 @@ jobs:
             else
                 echo "Configuring a full release"
             fi
+        - name: Setup deps
+          run: |
+            python3 -m venv py
+            ./py/bin/python3 -m pip install -U ivpm build
+            ./py/bin/ivpm update -a --py-prerls-packages
+        - name: Run tests
+          env:
+            GITHUB_API_TOKEN: ${{ secrets.LLMS_PAT }}
+          run: |
+            if test -d tests/unit; then
+              echo "Note: running tests"
+              ./py/bin/pytest -s tests/unit
+            else
+              echo "Note: no tests"
+            fi
         - name: Build packages
           run: |
             python3 -m venv py
