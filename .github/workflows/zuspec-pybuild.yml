@@ -107,6 +107,7 @@ jobs:
             if test -d tests/unit; then
               echo "Note: running tests"
               export PYTHONPATH=$(pwd)/src
+              export LANGFUSE_TRACING_ENABLED=false
               ./packages/python/bin/pytest -s tests/unit
             else
               echo "Note: no tests"
