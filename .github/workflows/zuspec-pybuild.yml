@@ -100,6 +100,8 @@ jobs:
             python3 -m venv py
             ./py/bin/python3 -m pip install -U ivpm build
             ./py/bin/ivpm update -a --py-prerls-packages
+            ./packages/python/bin/pip install -U packaging
+            ./packages/python/bin/pip show packaging
         - name: Run tests
           env:
             GITHUB_API_TOKEN: ${{ secrets.LLMS_PAT }}
@@ -108,18 +110,12 @@ jobs:
               echo "Note: running tests"
               export PYTHONPATH=$(pwd)/src
               export LANGFUSE_TRACING_ENABLED=false
-              ./packages/python/bin/pip install -U packaging
-              ./packages/python/bin/pip show packaging
-              ./packages/python/bin/python -c "import packaging; print(packages.__file__)"
               ./packages/python/bin/pytest -s tests/unit
             else
               echo "Note: no tests"
             fi
         - name: Build packages
           run: |
-            python3 -m venv py
-            ./py/bin/python3 -m pip install -U ivpm build
-            ./py/bin/ivpm update -a --py-prerls-packages
             ./py/bin/python3 -m build
         - name: Publish to PyPi
           if: ${{ startsWith(github.ref, 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v') }}
@@ -128,7 +124,7 @@ jobs:
             TWINE_USERNAME: __token__
             TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
           run: |
-            python3 -m pip install -U twine packaging
+            ./py/bin/python3 -m pip install -U twine packaging
             python3 -m twine upload dist/*.whl
 
     docs:
