@@ -108,6 +108,7 @@ jobs:
               echo "Note: running tests"
               export PYTHONPATH=$(pwd)/src
               export LANGFUSE_TRACING_ENABLED=false
+              ./packages/python/bin/pip install -U packaging
               ./packages/python/bin/pip show packaging
               ./packages/python/bin/python -c "import packaging; print(packages.__file__)"
               ./packages/python/bin/pytest -s tests/unit
