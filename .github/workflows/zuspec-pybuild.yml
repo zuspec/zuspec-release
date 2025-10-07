@@ -67,7 +67,7 @@ jobs:
           path: llms.txt
 
     universal:
-        if: ${{ inputs.build_universal }}
+        if: ${{ inputs.build_universal && always() }}
         needs: llms_txt
         runs-on: ubuntu-latest
         steps:
@@ -131,7 +131,7 @@ jobs:
             python3 -m twine upload dist/*.whl
 
     docs:
-        if: ${{ inputs.build_docs }}
+        if: ${{ inputs.build_docs && always() }}
         needs: llms_txt
         runs-on: ubuntu-latest
         steps:
