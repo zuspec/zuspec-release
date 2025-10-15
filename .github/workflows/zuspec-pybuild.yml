@@ -125,7 +125,7 @@ jobs:
             TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
           run: |
             ./py/bin/python3 -m pip install -U twine packaging
-            python3 -m twine upload dist/*.whl
+            ./py/bin/python3 -m twine upload dist/*.whl
 
     docs:
         if: ${{ inputs.build_docs && always() }}
