@@ -99,7 +99,7 @@ jobs:
           run: |
             python3 -m venv py
             ./py/bin/python3 -m pip install -U ivpm build
-            ./py/bin/ivpm update -a --py-prerls-packages
+            ./py/bin/ivpm update -a --py-pip
             ./packages/python/bin/pip install -U packaging
             ./packages/python/bin/pip show packaging
         - name: Run tests
@@ -142,7 +142,7 @@ jobs:
           run: |
             python3 -m venv py
             ./py/bin/pip install -U ivpm packaging
-            ./py/bin/ivpm update -a
+            ./py/bin/ivpm update -a --py-pip
             ./packages/python/bin/pip install -U packaging
         - name: Build Docs
           run: |
