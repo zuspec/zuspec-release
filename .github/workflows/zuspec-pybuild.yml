@@ -1,4 +1,52 @@
 
+# zuspec shared Python build+release workflow.
+#
+# NINE REPOSITORIES CALL THIS FILE. zuspec-be-hdlsim, zuspec-be-sv,
+# zuspec-be-sw, zuspec-be-trace, zuspec-dataclasses, zuspec-arl-dm,
+# zuspec-arl-eval, zuspec-fe-parser and zuspec-sv all resolve it as
+#   zuspec/zuspec-release/.github/workflows/zuspec-pybuild.yml@main
+# so an edit here is an edit to nine release pipelines at once, and it takes
+# effect the moment it lands on `main` -- callers pin the BRANCH, not a SHA.
+# Treat every change to this file accordingly.
+#
+# ---------------------------------------------------------------------------
+# CONVERTED 2026-08-31 (github-coexistence-completion-plan.md Phase 8, wave 4)
+#
+# WHAT THIS WORKFLOW USED TO DO:
+#
+#     - name: Publish to PyPi
+#       if: ${{ startsWith(github.ref, 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v') }}
+#
+# A PUSH TO main PUBLISHED TO PyPI, from both the `universal` and the `linux`
+# job. A tag was an alternative trigger, not the trigger. Nine repositories,
+# every one of them releasing on every push to its default branch.
+#
+# That is survivable while nothing but a human writes to `main`. zuspec is
+# entering a 5-minute bidirectional Forgejo<->GitHub mirror, and git-sync moves
+# the DEFAULT BRANCH -- so mirroring was a release trigger. zuspec-be-sw is a
+# caller and was one commit ahead on Forgejo at the time of writing, so the
+# first cycle would have published it. A mirror operation must never be a
+# publish operation.
+#
+# WHY THIS FILE HAD TO BE FIXED BEFORE ANY CALLER WAS ONBOARDED. Everywhere
+# else in this migration the conversion is self-protecting: GitHub evaluates a
+# workflow AT THE PUSHED COMMIT, so the commit that removes a branch gate runs
+# under the already-fixed workflow. THAT PROPERTY DOES NOT HOLD HERE. A caller's
+# own ci.yml is evaluated at its pushed commit, but the body of this workflow is
+# fetched from zuspec-release@main whatever the caller's commit says. One commit
+# here protects all nine; no other ordering protects any of them.
+#
+# `Publish` in the `docs` job -- JamesIves/github-pages-deploy-action against
+# the CALLER's gh-pages branch -- has been DELETED rather than gated. dvkit.org
+# owns all documentation, and a tag-gated gh-pages deploy is still a second
+# publisher of the same content on a different schedule. The docs BUILD stays,
+# as a CI check.
+#
+# DECISION, 2026-08-30: publish FAILS CLOSED on an unreachable switch. A release
+# blocked by a dvkit.org outage is recoverable; a release published twice from
+# two forges is not, and a PyPI version can be yanked but never reused.
+# ---------------------------------------------------------------------------
+
 name: zuspec_pybuild
 on:
   workflow_call:
@@ -36,6 +84,58 @@ on:
         required: false
 
 jobs:
+    gate:
+        # Release master switch. ONE file, above both platforms, decides who
+        # releases each repo:
+        #   https://dvkit.org/.well-known/release-authority.json
+        # Generated from sync-policy.toml by `git-sync emit-release-authority`,
+        # so GitHub and Forgejo cannot drift -- there is only one copy for them
+        # to disagree about. The runner only READS it, over plain HTTPS with no
+        # credential: a workflow file is public and editable by anyone who can
+        # push.
+        #
+        # THIS IS A SEPARATE JOB AND HAS TO BE. `if:` on a job cannot reference
+        # a step in its own job, and the publish steps below consume the answer
+        # through needs.gate.outputs.authority -- which is an EMPTY STRING, not
+        # an error, if the consuming job forgets `needs: gate`. The publish
+        # condition is then false forever: nothing publishes and nothing goes
+        # red. That is the quietest failure available here, so both consuming
+        # jobs declare it explicitly and the shadow checks assert the wiring.
+        #
+        # GITHUB_REPOSITORY here is the CALLING repository, not
+        # zuspec/zuspec-release, which is what makes one gate serve nine -- each
+        # caller is resolved against its own entry in the switch.
+        name: Release authority
+        runs-on: ubuntu-latest
+        outputs:
+          authority: ${{ steps.resolve.outputs.authority }}
+        steps:
+          - id: resolve
+            # One line on purpose: a multi-line `python3 -c` has to start at
+            # column 0, which terminates the YAML block scalar and silently
+            # corrupts the workflow.
+            run: |
+              url=https://dvkit.org/.well-known/release-authority.json
+              if ! body=$(curl -fsS --max-time 10 "$url"); then
+                # Fail closed only when a release could actually happen. In this
+                # org a release is a `v*` TAG, so that -- not the event name --
+                # is the test: a tag push IS a push, so keying on the event
+                # would both let a release through unresolved and make every
+                # ordinary push release-critical.
+                case "$GITHUB_REF" in
+                  refs/tags/v*)
+                    echo "::error::release-authority switch unreachable; refusing to publish"
+                    exit 1 ;;
+                  *)
+                    echo "authority=none" >> "$GITHUB_OUTPUT"
+                    echo "switch unreachable on a non-tag ref; nothing to release"
+                    exit 0 ;;
+                esac
+              fi
+              auth=$(printf '%s' "$body" | python3 -c 'import json,os,sys; d=json.load(sys.stdin); r=os.environ["GITHUB_REPOSITORY"]; print(d["repos"].get(r) or d["orgs"].get(r.split("/")[0]) or d["default"])')
+              echo "release authority for $GITHUB_REPOSITORY: $auth"
+              echo "authority=$auth" >> "$GITHUB_OUTPUT"
+
     llms_txt:
       if: ${{ inputs.build_llms_txt }}
       runs-on: ubuntu-latest
@@ -67,8 +167,18 @@ jobs:
           path: llms.txt
 
     universal:
+        # `always()` is load-bearing and predates this change: llms_txt is
+        # SKIPPED whenever build_llms_txt is false, and a skipped dependency
+        # skips its dependants unless the condition overrides it.
+        #
+        # It also means this job runs when `gate` FAILED -- which is the case
+        # the fail-closed branch above creates. That is safe, and deliberately
+        # so rather than accidentally: a failed gate produces an empty
+        # needs.gate.outputs.authority, the publish step's condition is then
+        # false, and the job builds without publishing. The gate is enforced at
+        # the STEP, so it cannot be defeated by a job-level `always()`.
         if: ${{ inputs.build_universal && always() }}
-        needs: llms_txt
+        needs: [llms_txt, gate]
         runs-on: ubuntu-latest
         steps:
         - name: checkout
@@ -84,12 +194,31 @@ jobs:
             echo "tag: ${tag}"
 
             if test -z ${tag}; then
-                # Candidate release
-                echo "Configuring a candidate release"
-                sed -i -e 's/SUFFIX=".*"/SUFFIX=".${{ github.run_id }}rc0"/g' \
-                  ${{ inputs.version_dir }}/__version__.py 
+                # NOT a release. The suffix is a PEP 440 LOCAL VERSION SEGMENT
+                # -- the part after the '+' -- and PyPI rejects any upload
+                # carrying one, outright, at the tool.
+                #
+                # That is the point. It used to be ".${{ github.run_id }}rc0",
+                # which is a perfectly valid and perfectly UPLOADABLE PyPI
+                # release-candidate version. The tag gate below is the control;
+                # this is the backstop for the day someone edits the gate. A dev
+                # build should not merely be unpublished, it should be
+                # unpublishABLE.
+                #
+                # `.dev` sorts BELOW the release it is derived from, so
+                # 0.0.1.dev123+gh precedes 0.0.1 rather than shadowing it --
+                # which `rc0` did not: 0.0.1.<run-id>rc0 sorts ABOVE 0.0.1.
+                #
+                # The platform tag is not decoration. GITHUB_RUN_ID is not
+                # unique across forges: GitHub's is an 11-digit global counter,
+                # Forgejo's a per-repo index that restarts if the instance is
+                # rebuilt. Without it the two collide.
+                echo "Configuring a development build (not publishable)"
+                suffix=".dev${{ github.run_id }}+gh"
+                sed -i -e "s%SUFFIX=\".*\"%SUFFIX=\"${suffix}\"%g" \
+                  ${{ inputs.version_dir }}/__version__.py
                 if test -f pyproject.toml; then
-                  sed -i -e 's/version.*=.*"\(.*\)"/version="\1.${{ github.run_id }}rc0"/g' pyproject.toml
+                  sed -i -e "s%version.*=.*\"\(.*\)\"%version=\"\1${suffix}\"%g" pyproject.toml
                   cat pyproject.toml
                 fi
             else
@@ -118,14 +247,41 @@ jobs:
           run: |
             ./py/bin/python3 -m build
         - name: Publish to PyPi
-          if: ${{ startsWith(github.ref, 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v') }}
+          # GATED 2026-08-31 (wave 4). A TAG, and the switch naming THIS forge.
+          #
+          #   refs/tags/v*   the condition replaced here accepted
+          #                  `refs/heads/main`, which a 5-minute sync cycle
+          #                  satisfies by construction. A tag is a deliberate
+          #                  act; a cycle never creates one.
+          #
+          #   authority      dvkit.org/.well-known/release-authority.json, so
+          #                  that which forge may publish is one decision in one
+          #                  place rather than nine workflow files.
+          #
+          # SKIPS, does not fail, when the switch names Forgejo: a red build on
+          # the dormant side every time anyone tags would train people to ignore
+          # the signal, which is worse than no signal.
+          #
+          # WHAT THIS COSTS. The per-push release candidate is gone: a push to a
+          # caller's default branch no longer uploads anything. That is the same
+          # trade already made for dv-flow, mballance-utils and fvutils.
+          if: ${{ startsWith(github.ref, 'refs/tags/v') && needs.gate.outputs.authority == 'github' }}
           env:
             BUILD_NUM: ${{ github.run_id }}
             TWINE_USERNAME: __token__
             TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
           run: |
+            if [ -z "$TWINE_PASSWORD" ]; then
+              echo "::error::PYPI_API_TOKEN is not visible to this repository"
+              exit 1
+            fi
             ./py/bin/python3 -m pip install -U twine packaging
-            ./py/bin/python3 -m twine upload dist/*.whl
+            ./py/bin/python3 -m twine check dist/*.whl
+            # --skip-existing is the idempotence net: with one switch and two
+            # possible publishers, a double-fire must be a no-op rather than a
+            # hard failure. Without it a re-run of a tag build fails on
+            # "File already exists", which reads like a broken release.
+            ./py/bin/python3 -m twine upload --non-interactive --skip-existing dist/*.whl
 
     docs:
         if: ${{ inputs.build_docs && always() }}
@@ -157,15 +313,42 @@ jobs:
         - name: Add llms.txt
           if: ${{ inputs.build_llms_txt }}
           run: cp llms-txt/llms.txt docs/_build/html
-        - name: Publish
-          if: ${{ startsWith(github.ref, 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v') }}
-          uses: JamesIves/github-pages-deploy-action@4.1.7
-          with:
-            branch: gh-pages
-            folder: docs/_build/html
+        # `Publish` WAS HERE and is deliberately gone (2026-08-31).
+        #
+        #   - name: Publish
+        #     if: ${{ startsWith(github.ref, 'refs/heads/main') || ... }}
+        #     uses: JamesIves/github-pages-deploy-action@4.1.7
+        #     with:
+        #       branch: gh-pages
+        #       folder: docs/_build/html
+        #
+        # It force-wrote the CALLER's gh-pages branch on every push to that
+        # caller's default branch -- the ref a sync cycle moves. It is also the
+        # specific action the release-conformance scan pattern is known to miss,
+        # so it never appeared in a report.
+        #
+        # DELETED rather than tag-gated because dvkit.org owns all
+        # documentation: a tag-gated gh-pages deploy is still a second publisher
+        # of the same content on a different schedule, and two publishers of one
+        # doc set is the problem regardless of how rarely the second fires.
+        #
+        # THE BUILD ABOVE STAYS, as a CI check. A broken cross-reference should
+        # fail here, on the commit that introduced it.
+        #
+        # The gh-pages BRANCHES still exist and are still served by GitHub
+        # Pages. Nothing writes to them any more; retiring the sites themselves
+        # is a separate, user-visible step recorded in the migration STATUS.md.
+        #
+        # This job therefore no longer publishes anything and does NOT declare
+        # `needs: gate`. Adding it would be inert at best and misleading at
+        # worst -- it would suggest a release decision is being made here.
 
     linux:
         if: ${{ inputs.build_linux && !inputs.build_universal }}
+        # Declared explicitly. Reading needs.gate.outputs without this yields an
+        # empty string rather than an error, so the publish step below would be
+        # false forever and this job would silently stop releasing.
+        needs: gate
         runs-on: ubuntu-latest
         strategy:
           matrix:
@@ -210,10 +393,14 @@ jobs:
             echo "tag: ${tag}"
 
             if test -z ${tag}; then
-                # Candidate release
-                echo "Configuring a candidate release"
-                sed -i -e 's/SUFFIX=".*"/SUFFIX=".${{ github.run_id }}rc0"/g' \
-                  ${{ inputs.version_dir }}/__version__.py 
+                # See the identical block in the `universal` job for why this is
+                # a PEP 440 local version segment: PyPI rejects an upload
+                # carrying one, so a dev build is unpublishABLE rather than
+                # merely ungated. The tag gate below is the control; this is the
+                # backstop.
+                echo "Configuring a development build (not publishable)"
+                sed -i -e "s%SUFFIX=\".*\"%SUFFIX=\".dev${{ github.run_id }}+gh\"%g" \
+                  ${{ inputs.version_dir }}/__version__.py
             else
                 echo "Configuring a full release"
             fi
@@ -231,13 +418,20 @@ jobs:
             quay.io/pypa/${{ matrix.image }}
             /io/scripts/build_linux.sh
         - name: Publish to PyPi
-          if: ${{ startsWith(github.ref, 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v') }}
+          # GATED 2026-08-31 (wave 4) -- see the `universal` job for the full
+          # reasoning. A tag, and the switch naming this forge.
+          if: ${{ startsWith(github.ref, 'refs/tags/v') && needs.gate.outputs.authority == 'github' }}
           env:
             BUILD_NUM: ${{ github.run_id }}
             TWINE_USERNAME: __token__
             TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
           run: |
+            if [ -z "$TWINE_PASSWORD" ]; then
+              echo "::error::PYPI_API_TOKEN is not visible to this repository"
+              exit 1
+            fi
             python3 -m pip install -U twine packaging
-            python3 -m twine upload wheelhouse/*.whl
+            python3 -m twine check wheelhouse/*.whl
+            python3 -m twine upload --non-interactive --skip-existing wheelhouse/*.whl
 
 
