@@ -301,7 +301,20 @@ jobs:
             ./py/bin/ivpm update -a --py-pip
             ./packages/python/bin/pip install -U packaging
         - name: Build Docs
+          # PATH, because `make -C docs html` shells out to `sphinx-build` by
+          # bare name and ivpm installs it into ./packages/python/bin, which is
+          # not on PATH. Every caller with build_docs: true failed here with
+          #
+          #     /bin/sh: 1: sphinx-build: not found
+          #     make: *** [Makefile:22: html] Error 127
+          #
+          # The `universal` job never hit this because it invokes its tools by
+          # explicit path (./packages/python/bin/pytest); this job is the only
+          # one that relies on PATH. The bug was invisible for as long as it was
+          # because the only repo using the shared workflow until now set
+          # build_docs: false.
           run: |
+            export PATH="$(pwd)/packages/python/bin:$PATH"
             make -C docs html
             touch docs/_build/html/.nojekyll
         - name: llms_txt
